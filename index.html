@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Disparo POS — ATN × TIM</title>
+<title>Disparo CONTROLE x POS — ATN × TIM</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -608,9 +608,7 @@
         <div class="info-box blue" style="margin-top:14px">
           <span class="info-icon">ℹ️</span>
           <div>
-            Colunas para tabela <strong>clientes</strong>:
-            nome, telefone, cpf, plan_id_isize, nascimento<br>
-            Mesmas colunas são usadas para <strong>contatos</strong> (disparo POS)
+            Colunas para tabela <strong>clientes</strong>: nome, telefone, cpf, plan_id_isize, nascimento<br>Colunas para <strong>contatos</strong> (disparo): + plano_nome, gigas, valor
           </div>
         </div>
       </div>
@@ -1217,16 +1215,19 @@ function onFileSelect(e) {
     const optBase = '<option value="">(não importar)</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     const optReq  = '<option value="">Selecione...</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     ['map-nome','map-telefone'].forEach(id => document.getElementById(id).innerHTML = optReq);
-    ['map-cpf','map-plan','map-nasc'].forEach(id => document.getElementById(id).innerHTML = optBase);
+    ['map-cpf','map-plan','map-nasc','map-plano-nome','map-gigas','map-valor'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = optBase; });
 
     // Auto-map
-    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'' };
+    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'', 'plano-nome':'', gigas:'', valor:'' };
     csvHeaders.forEach(h => {
       const hl = h.toLowerCase();
       if (hl.includes('nome'))   autoMap.nome = h;
       if (hl.includes('telef') || hl.includes('celular') || hl.includes('whatsapp') || hl.includes('phone')) autoMap.telefone = h;
       if (hl.includes('cpf'))    autoMap.cpf = h;
       if (hl.includes('plan') || hl.includes('isize')) autoMap.plan = h;
+      if (hl.includes('plano_nome') || hl.includes('plano nome') || hl.includes('nome_plano')) autoMap['plano-nome'] = h;
+      if (hl.includes('giga') || hl === 'gb') autoMap.gigas = h;
+      if (hl.includes('valor') || hl.includes('preco') || hl.includes('mensalidade')) autoMap.valor = h;
       if (hl.includes('nasc') || hl.includes('birth')) autoMap.nasc = h;
 
     });
@@ -1278,6 +1279,9 @@ async function importar() {
   const mCpf   = document.getElementById('map-cpf').value;
   const mPlan  = document.getElementById('map-plan').value;
   const mNasc  = document.getElementById('map-nasc').value;
+  const mPlanoNome = document.getElementById('map-plano-nome')?.value || '';
+  const mGigas     = document.getElementById('map-gigas')?.value || '';
+  const mValor     = document.getElementById('map-valor')?.value || '';
   if (!campId)      { toast('Selecione uma campanha', 'warning'); return; }
   if (!mNome||!mTel){ toast('Mapeie pelo menos Nome e Telefone', 'warning'); return; }
 
@@ -1293,15 +1297,31 @@ async function importar() {
       telefone: (row[mTel]||'').replace(/\D/g,''),
       cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
       plan_id_isize: mPlan ? (row[mPlan]||null) : null,
+      plano_nome: mPlanoNome ? (row[mPlanoNome]||null) : null,
+      gigas: mGigas ? (Number(row[mGigas])||null) : null,
+      valor: mValor ? (row[mValor]||null) : null,
       status: 'PENDENTE', enviado_em: null, erro: null, tentativa: 0,
     })).filter(c => c.nome && c.telefone);
+
+    // Converte data DD/MM/YYYY ou DD-MM-YYYY para YYYY-MM-DD
+    function parseDate(val) {
+      if (!val) return null;
+      const v = String(val).trim();
+      // DD/MM/YYYY ou DD-MM-YYYY
+      const m1 = v.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+      if (m1) return m1[3] + '-' + m1[2] + '-' + m1[1];
+      // YYYY-MM-DD já correto
+      const m2 = v.match(/^\d{4}-\d{2}-\d{2}$/);
+      if (m2) return v;
+      return null;
+    }
 
     const clientes = csvData.map(row => ({
       nome: (row[mNome]||'').trim(),
       telefone: (row[mTel]||'').replace(/\D/g,''),
       cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
       plan_id_isize: mPlan ? (row[mPlan]||null) : null,
-      nascimento: mNasc ? (row[mNasc]||null) : null,
+      nascimento: mNasc ? parseDate(row[mNasc]) : null,
     })).filter(c => c.nome && c.telefone);
 
     // Insert in batches of 100
