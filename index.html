@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Disparo CONTROLE X POS — ATN × TIM</title>
+<title>Disparo POS — ATN × TIM</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -341,6 +341,9 @@
     </button>
     <button class="nav-item" onclick="goTo('acompanhar', this)">
       <span class="icon">📡</span> Acompanhar Disparo
+    </button>
+    <button class="nav-item" onclick="goTo('atendimentos', this)">
+      <span class="icon">🎧</span> Atendimentos Bot
     </button>
   </nav>
   <div class="sidebar-footer">
@@ -781,6 +784,86 @@
   </div>
 </div>
 
+
+<!-- ── ATENDIMENTOS ───────────────────────────────────────────────────────── -->
+<div id="page-atendimentos" class="page">
+  <div class="page-header-row">
+    <div class="page-header">
+      <h1>Atendimentos Bot</h1>
+      <p>Acompanhe os atendimentos do fluxo POS em tempo real</p>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-ghost btn-sm" onclick="loadAtendimentos()">🔄 Atualizar</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stat-card blue">
+      <div class="stat-icon">📋</div>
+      <div class="stat-num" id="at-total">—</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">✅</div>
+      <div class="stat-num" id="at-venda">—</div>
+      <div class="stat-label">Vendas confirmadas</div>
+    </div>
+    <div class="stat-card blue" style="border-top-color:#F5A623">
+      <div class="stat-icon">💬</div>
+      <div class="stat-num" id="at-emand" style="color:#F5A623">—</div>
+      <div class="stat-label">Em atendimento</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-icon">🚪</div>
+      <div class="stat-num" id="at-abandono">—</div>
+      <div class="stat-label">Abandono</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon">👤</div>
+      <div class="stat-num" id="at-humano">—</div>
+      <div class="stat-label">Atend. humano</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <div style="flex:1;min-width:200px">
+      <input id="at-search" placeholder="🔍 Buscar por nome ou telefone..." 
+        oninput="filterAtendimentos()" style="width:100%">
+    </div>
+    <select id="at-filter-status" onchange="filterAtendimentos()" style="width:160px">
+      <option value="">Todos os status</option>
+      <option value="em atendimento">Em atendimento</option>
+      <option value="finalizada">Finalizada</option>
+      <option value="abandono">Abandono</option>
+    </select>
+    <select id="at-filter-etapa" onchange="filterAtendimentos()" style="width:180px">
+      <option value="">Todas as etapas</option>
+      <option value="inicio">Início</option>
+      <option value="oferta_enviada">Oferta enviada</option>
+      <option value="aguardando_cpf_completo">Aguardando CPF</option>
+      <option value="venda_confirmada">Venda confirmada</option>
+      <option value="validacao_errada">Validação errada</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Nome</th><th>Telefone</th><th>Plano</th>
+          <th>Etapa</th><th>Status</th><th>Proposta</th><th>Tentativas</th><th>Atualizado</th>
+        </tr></thead>
+        <tbody id="at-table-body">
+          <tr class="empty-row"><td colspan="9">Clique em Atualizar para carregar</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)" id="at-count"></div>
+  </div>
+</div>
+
 </main>
 </div>
 
@@ -804,8 +887,8 @@
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const SB_URL = 'https://uhynhyewlzcbeycsnapy.supabase.co/rest/v1';
-const SB_KEY = 'sb_publishable_e55mUZdc_UGRvgSYT0n_YA_PSu3P6b4';
+const SB_URL = 'https://rkigwmjcoxubscjfwzyt.supabase.co/rest/v1';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJraWd3bWpjb3h1YnNjamZ3enl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNjg4NzcsImV4cCI6MjA5NDg0NDg3N30.u7fGXIxsOlT1oroJRxbtbmLLG6WULyNWXmDh3K5_w5A';
 const SB_H   = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -830,6 +913,7 @@ function goTo(page, btn) {
   if (page === 'nova')        loadTemplates();
   if (page === 'importar')    { loadCampanhasImport(); }
   if (page === 'acompanhar')  loadCampanhasAcomp();
+  if (page === 'atendimentos') loadAtendimentos();
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -1278,6 +1362,86 @@ function toggleAuto() {
   btn.classList.toggle('on', autoRefresh);
   if (autoRefresh) { autoInterval = setInterval(loadContatos, 5000); }
   else { clearInterval(autoInterval); }
+}
+
+
+// ── ATENDIMENTOS ──────────────────────────────────────────────────────────────
+let atendimentosAll = [];
+
+async function loadAtendimentos() {
+  try {
+    atendimentosAll = await sb('/atendimentos?select=*&order=id.desc&limit=500');
+    updateAtStats();
+    filterAtendimentos();
+  } catch(e) { toast('Erro ao carregar atendimentos: ' + e.message, 'error'); }
+}
+
+function updateAtStats() {
+  const total   = atendimentosAll.length;
+  const venda   = atendimentosAll.filter(a => a.etapa === 'venda_confirmada').length;
+  const emand   = atendimentosAll.filter(a => a.status === 'em atendimento').length;
+  const aband   = atendimentosAll.filter(a => a.status === 'abandono').length;
+  const humano  = atendimentosAll.filter(a => a.etapa === 'validacao_errada').length;
+  document.getElementById('at-total').textContent   = total.toLocaleString();
+  document.getElementById('at-venda').textContent   = venda.toLocaleString();
+  document.getElementById('at-emand').textContent   = emand.toLocaleString();
+  document.getElementById('at-abandono').textContent= aband.toLocaleString();
+  document.getElementById('at-humano').textContent  = humano.toLocaleString();
+}
+
+function filterAtendimentos() {
+  const search = (document.getElementById('at-search').value || '').toLowerCase();
+  const status = document.getElementById('at-filter-status').value;
+  const etapa  = document.getElementById('at-filter-etapa').value;
+
+  const filtered = atendimentosAll.filter(a => {
+    const matchSearch = !search ||
+      (a.nome||'').toLowerCase().includes(search) ||
+      (a.telefone||'').includes(search);
+    const matchStatus = !status || a.status === status;
+    const matchEtapa  = !etapa  || a.etapa  === etapa;
+    return matchSearch && matchStatus && matchEtapa;
+  });
+
+  renderAtendimentos(filtered);
+  document.getElementById('at-count').textContent =
+    `Mostrando ${filtered.length} de ${atendimentosAll.length} atendimentos`;
+}
+
+const ETAPA_LABEL = {
+  'inicio':                  '🚀 Início',
+  'oferta_enviada':          '📨 Oferta enviada',
+  'aguardando_cpf_completo': '🔐 Aguardando CPF',
+  'venda_confirmada':        '🎉 Venda confirmada',
+  'validacao_errada':        '❌ Validação errada',
+};
+const STATUS_BADGE = {
+  'em atendimento': 'badge-orange',
+  'finalizada':     'badge-green',
+  'abandono':       'badge-red',
+};
+
+function renderAtendimentos(data) {
+  const tbody = document.getElementById('at-table-body');
+  if (!data.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Nenhum atendimento encontrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((a, i) => `
+    <tr>
+      <td class="td-muted">${a.id}</td>
+      <td style="font-weight:500">${a.nome||'—'}</td>
+      <td class="td-mono">${a.telefone||'—'}</td>
+      <td>
+        <div style="font-size:12px;font-weight:600">${a.plano_nome||'—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${a.gigas||''}${a.gigas?'GB':''} ${a.valor?'· R$ '+Number(a.valor).toFixed(2):''}</div>
+      </td>
+      <td><span style="font-size:12px">${ETAPA_LABEL[a.etapa]||a.etapa||'—'}</span></td>
+      <td><span class="badge ${STATUS_BADGE[a.status]||'badge-gray'}">${a.status||'—'}</span></td>
+      <td style="font-size:12px;color:var(--teal);font-weight:600">${a.proposta||'—'}</td>
+      <td style="text-align:center">${a.tentativas||0}</td>
+      <td class="td-muted">${fmtDate(a.updated_at||a.created_at)}</td>
+    </tr>`).join('');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
