@@ -293,6 +293,23 @@
   .modal-header h3 { font-size: 16px; font-weight: 700; }
   .modal-close { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--muted); }
 
+
+  /* FUNIL */
+  .funil-step {
+    flex: 1; background: #F8FAFC; border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 14px 10px; text-align: center; cursor: pointer;
+    transition: all .15s;
+  }
+  .funil-step:hover { border-color: #00A896; background: #E6F7F6; }
+  .funil-step.active { border-color: #00A896; background: #E6F7F6; }
+  .funil-step.funil-success { border-color: #BBF7D0; background: #F0FDF4; }
+  .funil-step.funil-danger  { border-color: #FECACA; background: #FEF2F2; }
+  .funil-num   { font-size: 24px; font-weight: 700; color: #00A896; line-height: 1; }
+  .funil-step.funil-success .funil-num { color: #16A34A; }
+  .funil-step.funil-danger  .funil-num { color: #DC2626; }
+  .funil-label { font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 500; }
+  .funil-arrow { display: flex; align-items: center; color: var(--hint); font-size: 20px; padding: 0 2px; }
+
   /* LOADER */
   .spinner {
     width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3);
@@ -591,10 +608,9 @@
         <div class="info-box blue" style="margin-top:14px">
           <span class="info-icon">ℹ️</span>
           <div>
-            Colunas esperadas para tabela <strong>clientes</strong>:
+            Colunas para tabela <strong>clientes</strong>:
             nome, telefone, cpf, plan_id_isize, nascimento<br>
-            Colunas adicionais para <strong>contatos</strong> (disparo):
-            valor, data_vencimento
+            Mesmas colunas são usadas para <strong>contatos</strong> (disparo POS)
           </div>
         </div>
       </div>
@@ -640,17 +656,7 @@
             <label>Coluna → Nascimento</label>
             <select id="map-nasc"></select>
           </div>
-          <div class="form-group" style="margin:0">
-            <label>Coluna → Valor (disparo)</label>
-            <select id="map-valor"></select>
-          </div>
-        </div>
-        <div class="form-row cols-3" style="margin-top:12px">
-          <div class="form-group" style="margin:0">
-            <label>Coluna → Vencimento (disparo)</label>
-            <select id="map-venc"></select>
-          </div>
-        </div>
+
 
         <hr>
         <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">
@@ -790,22 +796,26 @@
   <div class="page-header-row">
     <div class="page-header">
       <h1>Atendimentos Bot</h1>
-      <p>Acompanhe os atendimentos do fluxo POS em tempo real</p>
+      <p>Acompanhe em tempo real os atendimentos do fluxo POS</p>
     </div>
     <div class="btn-group">
       <button class="btn btn-ghost btn-sm" onclick="loadAtendimentos()">🔄 Atualizar</button>
+      <div class="toggle-wrap">
+        <button class="toggle" id="toggle-at-auto" onclick="toggleAtAuto()"></button>
+        <span class="toggle-label">Auto (10s)</span>
+      </div>
     </div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+  <!-- Stats row -->
+  <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px">
     <div class="stat-card blue">
       <div class="stat-icon">📋</div>
       <div class="stat-num" id="at-total">—</div>
       <div class="stat-label">Total</div>
     </div>
     <div class="stat-card green">
-      <div class="stat-icon">✅</div>
+      <div class="stat-icon">🎉</div>
       <div class="stat-num" id="at-venda">—</div>
       <div class="stat-label">Vendas confirmadas</div>
     </div>
@@ -826,10 +836,41 @@
     </div>
   </div>
 
+  <!-- Funil de etapas -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-header">Funil de etapas</div>
+    <div class="card-body" style="display:flex;gap:6px;align-items:stretch">
+      <div id="funil-inicio"    class="funil-step" data-etapa="inicio">
+        <div class="funil-num" id="fn-inicio">—</div>
+        <div class="funil-label">🚀 Início</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-oferta"    class="funil-step" data-etapa="oferta_enviada">
+        <div class="funil-num" id="fn-oferta">—</div>
+        <div class="funil-label">📨 Oferta enviada</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-cpf"       class="funil-step" data-etapa="aguardando_cpf_completo">
+        <div class="funil-num" id="fn-cpf">—</div>
+        <div class="funil-label">🔐 Aguardando CPF</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-venda"     class="funil-step funil-success" data-etapa="venda_confirmada">
+        <div class="funil-num" id="fn-venda">—</div>
+        <div class="funil-label">🎉 Venda confirmada</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-errada"    class="funil-step funil-danger" data-etapa="validacao_errada">
+        <div class="funil-num" id="fn-errada">—</div>
+        <div class="funil-label">❌ Validação errada</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Filters -->
-  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
     <div style="flex:1;min-width:200px">
-      <input id="at-search" placeholder="🔍 Buscar por nome ou telefone..." 
+      <input id="at-search" placeholder="🔍 Buscar por nome, telefone ou CPF..."
         oninput="filterAtendimentos()" style="width:100%">
     </div>
     <select id="at-filter-status" onchange="filterAtendimentos()" style="width:160px">
@@ -838,7 +879,7 @@
       <option value="finalizada">Finalizada</option>
       <option value="abandono">Abandono</option>
     </select>
-    <select id="at-filter-etapa" onchange="filterAtendimentos()" style="width:180px">
+    <select id="at-filter-etapa" onchange="filterAtendimentos()" style="width:185px">
       <option value="">Todas as etapas</option>
       <option value="inicio">Início</option>
       <option value="oferta_enviada">Oferta enviada</option>
@@ -846,21 +887,35 @@
       <option value="venda_confirmada">Venda confirmada</option>
       <option value="validacao_errada">Validação errada</option>
     </select>
+    <button class="btn btn-ghost btn-sm" onclick="resetAtFiltros()">✕ Limpar filtros</button>
   </div>
 
   <div class="card">
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>#</th><th>Nome</th><th>Telefone</th><th>Plano</th>
-          <th>Etapa</th><th>Status</th><th>Proposta</th><th>Tentativas</th><th>Atualizado</th>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>CPF</th>
+          <th>Plano</th>
+          <th>GB</th>
+          <th>Valor</th>
+          <th>Etapa</th>
+          <th>Status</th>
+          <th>Proposta</th>
+          <th>Tentativas</th>
+          <th>Atualizado</th>
         </tr></thead>
         <tbody id="at-table-body">
-          <tr class="empty-row"><td colspan="9">Clique em Atualizar para carregar</td></tr>
+          <tr class="empty-row"><td colspan="12">Clique em Atualizar para carregar</td></tr>
         </tbody>
       </table>
     </div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)" id="at-count"></div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between" id="at-footer">
+      <span id="at-count"></span>
+      <span id="at-last-update" style="color:var(--hint)"></span>
+    </div>
   </div>
 </div>
 
@@ -1162,10 +1217,10 @@ function onFileSelect(e) {
     const optBase = '<option value="">(não importar)</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     const optReq  = '<option value="">Selecione...</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     ['map-nome','map-telefone'].forEach(id => document.getElementById(id).innerHTML = optReq);
-    ['map-cpf','map-plan','map-nasc','map-valor','map-venc'].forEach(id => document.getElementById(id).innerHTML = optBase);
+    ['map-cpf','map-plan','map-nasc'].forEach(id => document.getElementById(id).innerHTML = optBase);
 
     // Auto-map
-    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'', valor:'', venc:'' };
+    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'' };
     csvHeaders.forEach(h => {
       const hl = h.toLowerCase();
       if (hl.includes('nome'))   autoMap.nome = h;
@@ -1173,8 +1228,7 @@ function onFileSelect(e) {
       if (hl.includes('cpf'))    autoMap.cpf = h;
       if (hl.includes('plan') || hl.includes('isize')) autoMap.plan = h;
       if (hl.includes('nasc') || hl.includes('birth')) autoMap.nasc = h;
-      if (hl.includes('valor') || hl.includes('divida')) autoMap.valor = h;
-      if (hl.includes('venc') || hl.includes('expir'))   autoMap.venc = h;
+
     });
     Object.entries(autoMap).forEach(([k,v]) => {
       const el = document.getElementById(`map-${k}`);
@@ -1224,9 +1278,6 @@ async function importar() {
   const mCpf   = document.getElementById('map-cpf').value;
   const mPlan  = document.getElementById('map-plan').value;
   const mNasc  = document.getElementById('map-nasc').value;
-  const mValor = document.getElementById('map-valor').value;
-  const mVenc  = document.getElementById('map-venc').value;
-
   if (!campId)      { toast('Selecione uma campanha', 'warning'); return; }
   if (!mNome||!mTel){ toast('Mapeie pelo menos Nome e Telefone', 'warning'); return; }
 
@@ -1241,8 +1292,7 @@ async function importar() {
       nome: (row[mNome]||'').trim(),
       telefone: (row[mTel]||'').replace(/\D/g,''),
       cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
-      valor: mValor ? row[mValor] : null,
-      data_vencimento: mVenc ? row[mVenc] : null,
+      plan_id_isize: mPlan ? (row[mPlan]||null) : null,
       status: 'PENDENTE', enviado_em: null, erro: null, tentativa: 0,
     })).filter(c => c.nome && c.telefone);
 
@@ -1273,7 +1323,7 @@ async function importar() {
     });
 
     document.getElementById('import-result-text').textContent =
-      `${contatos.length} contatos adicionados à campanha e ${clientes.length} registros inseridos/atualizados na tabela clientes.`;
+      `${contatos.length} contatos adicionados à campanha e ${clientes.length} clientes inseridos/atualizados no Supabase POS.`;
     document.getElementById('imp-step-2').style.display = 'none';
     document.getElementById('imp-step-3').style.display = 'block';
     setStep(3);
@@ -1372,6 +1422,7 @@ async function loadAtendimentos() {
   try {
     atendimentosAll = await sb('/atendimentos?select=*&order=id.desc&limit=500');
     updateAtStats();
+    updateFunil();
     filterAtendimentos();
   } catch(e) { toast('Erro ao carregar atendimentos: ' + e.message, 'error'); }
 }
@@ -1405,15 +1456,22 @@ function filterAtendimentos() {
 
   renderAtendimentos(filtered);
   document.getElementById('at-count').textContent =
-    `Mostrando ${filtered.length} de ${atendimentosAll.length} atendimentos`;
+    `${filtered.length} de ${atendimentosAll.length} atendimentos`;
 }
 
 const ETAPA_LABEL = {
   'inicio':                  '🚀 Início',
   'oferta_enviada':          '📨 Oferta enviada',
-  'aguardando_cpf_completo': '🔐 Aguardando CPF',
+  'aguardando_cpf_completo': '🔐 Aguard. CPF',
   'venda_confirmada':        '🎉 Venda confirmada',
   'validacao_errada':        '❌ Validação errada',
+};
+const ETAPA_COLOR = {
+  'inicio':                  '#64748B',
+  'oferta_enviada':          '#F5A623',
+  'aguardando_cpf_completo': '#7C3AED',
+  'venda_confirmada':        '#16A34A',
+  'validacao_errada':        '#DC2626',
 };
 const STATUS_BADGE = {
   'em atendimento': 'badge-orange',
@@ -1421,27 +1479,62 @@ const STATUS_BADGE = {
   'abandono':       'badge-red',
 };
 
+function updateFunil() {
+  const map = {
+    'inicio':'fn-inicio','oferta_enviada':'fn-oferta',
+    'aguardando_cpf_completo':'fn-cpf','venda_confirmada':'fn-venda','validacao_errada':'fn-errada'
+  };
+  Object.entries(map).forEach(([etapa, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = atendimentosAll.filter(a=>a.etapa===etapa).length.toLocaleString();
+  });
+  document.querySelectorAll('.funil-step').forEach(el => {
+    el.onclick = () => {
+      const etapa = el.dataset.etapa;
+      const sel = document.getElementById('at-filter-etapa');
+      sel.value = sel.value === etapa ? '' : etapa;
+      document.querySelectorAll('.funil-step').forEach(e => e.classList.remove('active'));
+      if (sel.value) el.classList.add('active');
+      filterAtendimentos();
+    };
+  });
+}
+
+function resetAtFiltros() {
+  document.getElementById('at-search').value = '';
+  document.getElementById('at-filter-status').value = '';
+  document.getElementById('at-filter-etapa').value = '';
+  document.querySelectorAll('.funil-step').forEach(e => e.classList.remove('active'));
+  filterAtendimentos();
+}
+
 function renderAtendimentos(data) {
   const tbody = document.getElementById('at-table-body');
   if (!data.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Nenhum atendimento encontrado</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Nenhum atendimento encontrado</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map((a, i) => `
-    <tr>
-      <td class="td-muted">${a.id}</td>
-      <td style="font-weight:500">${a.nome||'—'}</td>
-      <td class="td-mono">${a.telefone||'—'}</td>
-      <td>
-        <div style="font-size:12px;font-weight:600">${a.plano_nome||'—'}</div>
-        <div style="font-size:11px;color:var(--muted)">${a.gigas||''}${a.gigas?'GB':''} ${a.valor?'· R$ '+Number(a.valor).toFixed(2):''}</div>
-      </td>
-      <td><span style="font-size:12px">${ETAPA_LABEL[a.etapa]||a.etapa||'—'}</span></td>
-      <td><span class="badge ${STATUS_BADGE[a.status]||'badge-gray'}">${a.status||'—'}</span></td>
-      <td style="font-size:12px;color:var(--teal);font-weight:600">${a.proposta||'—'}</td>
-      <td style="text-align:center">${a.tentativas||0}</td>
-      <td class="td-muted">${fmtDate(a.updated_at||a.created_at)}</td>
-    </tr>`).join('');
+  tbody.innerHTML = data.map(a => {
+    const cpfFmt = (a.cpf||'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    const valorFmt = a.valor ? 'R$\u00a0' + Number(a.valor).toFixed(2).replace('.',',') : '\u2014';
+    const tent = (a.tentativas||0) + (a.tentativas_abandono ? ' / ' + a.tentativas_abandono : '');
+    return '<tr>' +
+      '<td class="td-muted" style="font-size:11px">#' + a.id + '</td>' +
+      '<td style="font-weight:600;min-width:130px">' + (a.nome||'\u2014') + '</td>' +
+      '<td class="td-mono" style="font-size:12px">' + (a.telefone||'\u2014') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + (cpfFmt||'\u2014') + '</td>' +
+      '<td><div style="font-size:12px;font-weight:600">' + (a.plano_nome||'\u2014') + '</div>' +
+        '<div style="font-size:10px;color:var(--hint)">' + (a.plano_id_isize||'') + '</div></td>' +
+      '<td style="text-align:center;font-weight:700;color:#00A896">' + (a.gigas ? a.gigas+'GB' : '\u2014') + '</td>' +
+      '<td style="font-weight:600">' + valorFmt + '</td>' +
+      '<td><span style="font-size:11px;font-weight:600;color:' + (ETAPA_COLOR[a.etapa]||'#64748B') + '">' +
+        (ETAPA_LABEL[a.etapa]||a.etapa||'\u2014') + '</span></td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[a.status]||'badge-gray') + '">' + (a.status||'\u2014') + '</span></td>' +
+      '<td style="font-size:12px;font-weight:700;color:#00A896">' + (a.proposta||'\u2014') + '</td>' +
+      '<td style="text-align:center;font-size:12px">' + tent + '</td>' +
+      '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + fmtDate(a.updated_at||a.created_at) + '</td>' +
+    '</tr>';
+  }).join('');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
