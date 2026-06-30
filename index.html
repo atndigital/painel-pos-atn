@@ -789,14 +789,15 @@
         </div>
         <div class="form-row cols-3" style="margin-top:12px">
           <div class="form-group" style="margin:0">
-            <label>Coluna → Plan ID iSize</label>
+            <label>Coluna → Plano (nome iSize) <span class="req">*</span></label>
             <select id="map-plan"></select>
+            <div style="font-size:11px;color:var(--hint);margin-top:4px">Deve bater com o nome cadastrado na tabela de planos.</div>
           </div>
           <div class="form-group" style="margin:0">
             <label>Coluna → Nascimento</label>
             <select id="map-nasc"></select>
           </div>
-
+        </div>
 
         <hr>
         <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">
@@ -1305,21 +1306,17 @@ function onFileSelect(e) {
     const optBase = '<option value="">(não importar)</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     const optReq  = '<option value="">Selecione...</option>' + csvHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
     ['map-nome','map-telefone'].forEach(id => document.getElementById(id).innerHTML = optReq);
-    ['map-cpf','map-plan','map-nasc','map-plano-nome','map-gigas','map-valor'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = optBase; });
+    ['map-cpf','map-plan','map-nasc'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = optBase; });
 
     // Auto-map
-    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'', 'plano-nome':'', gigas:'', valor:'' };
+    const autoMap = { nome:'', telefone:'', cpf:'', plan:'', nasc:'' };
     csvHeaders.forEach(h => {
       const hl = h.toLowerCase();
       if (hl.includes('nome'))   autoMap.nome = h;
       if (hl.includes('telef') || hl.includes('celular') || hl.includes('whatsapp') || hl.includes('phone')) autoMap.telefone = h;
       if (hl.includes('cpf'))    autoMap.cpf = h;
       if (hl.includes('plan') || hl.includes('isize')) autoMap.plan = h;
-      if (hl.includes('plano_nome') || hl.includes('plano nome') || hl.includes('nome_plano')) autoMap['plano-nome'] = h;
-      if (hl.includes('giga') || hl === 'gb') autoMap.gigas = h;
-      if (hl.includes('valor') || hl.includes('preco') || hl.includes('mensalidade')) autoMap.valor = h;
       if (hl.includes('nasc') || hl.includes('birth')) autoMap.nasc = h;
-
     });
     Object.entries(autoMap).forEach(([k,v]) => {
       const el = document.getElementById(`map-${k}`);
@@ -1369,71 +1366,76 @@ async function importar() {
   const mCpf   = document.getElementById('map-cpf').value;
   const mPlan  = document.getElementById('map-plan').value;
   const mNasc  = document.getElementById('map-nasc').value;
-  const mPlanoNome = document.getElementById('map-plano-nome')?.value || '';
-  const mGigas     = document.getElementById('map-gigas')?.value || '';
-  const mValor     = document.getElementById('map-valor')?.value || '';
   if (!campId)      { toast('Selecione uma campanha', 'warning'); return; }
   if (!mNome||!mTel){ toast('Mapeie pelo menos Nome e Telefone', 'warning'); return; }
+  if (!mPlan)       { toast('Mapeie a coluna de Plano (nome iSize)', 'warning'); return; }
 
   const btn = document.getElementById('btn-importar');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Importando...';
 
-  try {
-    // Build records
-    const contatos = csvData.map(row => ({
-      campanha_id: parseInt(campId),
-      nome: (row[mNome]||'').trim(),
-      telefone: (row[mTel]||'').replace(/\D/g,''),
-      cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
-      plan_id_isize: mPlan ? (row[mPlan]||null) : null,
-      plano_nome: mPlanoNome ? (row[mPlanoNome]||null) : null,
-      gigas: mGigas ? (Number(row[mGigas])||null) : null,
-      valor: mValor ? (row[mValor]||null) : null,
-      status: 'PENDENTE', enviado_em: null, erro: null, tentativa: 0,
-    })).filter(c => c.nome && c.telefone);
+  // Converte data DD/MM/YYYY ou DD-MM-YYYY para YYYY-MM-DD
+  function parseDate(val) {
+    if (!val) return null;
+    const v = String(val).trim();
+    const m1 = v.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+    if (m1) return m1[3] + '-' + m1[2] + '-' + m1[1];
+    const m2 = v.match(/^\d{4}-\d{2}-\d{2}$/);
+    if (m2) return v;
+    return null;
+  }
 
-    // Converte data DD/MM/YYYY ou DD-MM-YYYY para YYYY-MM-DD
-    function parseDate(val) {
-      if (!val) return null;
-      const v = String(val).trim();
-      // DD/MM/YYYY ou DD-MM-YYYY
-      const m1 = v.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
-      if (m1) return m1[3] + '-' + m1[2] + '-' + m1[1];
-      // YYYY-MM-DD já correto
-      const m2 = v.match(/^\d{4}-\d{2}-\d{2}$/);
-      if (m2) return v;
-      return null;
+  try {
+    // 1) Carrega tabela de planos para fazer o JOIN local
+    const planos = await sb('/planos?select=plano_nome_isize,plan_id_isize,plano_id,gigas,valor,plano_nome');
+    const planoMap = {};
+    planos.forEach(p => { planoMap[(p.plano_nome_isize||'').trim().toLowerCase()] = p; });
+
+    let semCorrespondencia = 0;
+
+    // 2) Monta contatos já resolvidos
+    const contatos = csvData.map(row => {
+      const nomePlanoCsv = (row[mPlan]||'').trim();
+      const planoResolvido = planoMap[nomePlanoCsv.toLowerCase()] || null;
+      if (mPlan && nomePlanoCsv && !planoResolvido) semCorrespondencia++;
+
+      return {
+        campanha_id: parseInt(campId),
+        nome: (row[mNome]||'').trim(),
+        telefone: (row[mTel]||'').replace(/\D/g,''),
+        cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
+        nascimento: mNasc ? parseDate(row[mNasc]) : null,
+        plano_nome: planoResolvido ? planoResolvido.plano_nome : null,
+        plan_id_isize: planoResolvido ? planoResolvido.plan_id_isize : null,
+        plano_id: planoResolvido ? planoResolvido.plano_id : null,
+        gigas: planoResolvido ? planoResolvido.gigas : null,
+        valor: planoResolvido ? planoResolvido.valor : null,
+        status: 'PENDENTE', enviado_em: null, erro: null, tentativas: 0,
+      };
+    }).filter(c => c.nome && c.telefone);
+
+    if (semCorrespondencia > 0) {
+      toast(`⚠️ ${semCorrespondencia} contato(s) sem plano correspondente na tabela de planos`, 'warning');
     }
 
-    const clientes = csvData.map(row => ({
-      nome: (row[mNome]||'').trim(),
-      telefone: (row[mTel]||'').replace(/\D/g,''),
-      cpf: mCpf ? (row[mCpf]||'').replace(/\D/g,'') : null,
-      plan_id_isize: mPlan ? (row[mPlan]||null) : null,
-      nascimento: mNasc ? parseDate(row[mNasc]) : null,
-    })).filter(c => c.nome && c.telefone);
-
-    // Insert in batches of 100
+    // 3) Insert em lotes de 100
     for (let i=0; i<contatos.length; i+=100) {
       await sb('/contatos', { method:'POST',
         headers: {...SB_H, Prefer:'resolution=ignore-duplicates,return=minimal'},
         body: JSON.stringify(contatos.slice(i,i+100))
       });
     }
-    for (let i=0; i<clientes.length; i+=100) {
-      await sb('/clientes', { method:'POST',
-        headers: {...SB_H, Prefer:'resolution=ignore-duplicates,return=minimal'},
-        body: JSON.stringify(clientes.slice(i,i+100))
-      });
-    }
-    // Update total
+
+    // 4) total_contatos acumula em vez de sobrescrever (suporta re-imports)
+    const campAtual = await sb(`/campanhas?id=eq.${campId}&select=total_contatos`);
+    const totalAnterior = campAtual?.[0]?.total_contatos || 0;
     await sb(`/campanhas?id=eq.${campId}`, { method:'PATCH',
-      body: JSON.stringify({ total_contatos: contatos.length })
+      body: JSON.stringify({ total_contatos: totalAnterior + contatos.length })
     });
 
     document.getElementById('import-result-text').textContent =
-      `${contatos.length} contatos adicionados à campanha e ${clientes.length} clientes inseridos/atualizados no Supabase POS.`;
+      `${contatos.length} contatos adicionados à campanha.` +
+      (semCorrespondencia ? ` ${semCorrespondencia} sem plano correspondente.` : '');
     document.getElementById('imp-step-2').style.display = 'none';
     document.getElementById('imp-step-3').style.display = 'block';
     setStep(3);
