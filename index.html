@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0044)https://atndigital.github.io/painel-pos-atn/ -->
+<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Disparo CONTROLE x POS — ATN × TIM</title>
 <style>
@@ -343,24 +343,21 @@
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Principal</div>
-    <button class="nav-item active" onclick="goTo('dashboard', this)">
+    <button class="nav-item active" onclick="goTo(&#39;dashboard&#39;, this)">
       <span class="icon">📊</span> Dashboard
     </button>
-    <button class="nav-item" onclick="goTo('campanhas', this)">
+    <button class="nav-item" onclick="goTo(&#39;campanhas&#39;, this)">
       <span class="icon">📋</span> Campanhas
     </button>
     <div class="nav-section">Ações</div>
-    <button class="nav-item" onclick="goTo('nova', this)">
+    <button class="nav-item" onclick="goTo(&#39;nova&#39;, this)">
       <span class="icon">➕</span> Nova Campanha
     </button>
-    <button class="nav-item" onclick="goTo('importar', this)">
+    <button class="nav-item" onclick="goTo(&#39;importar&#39;, this)">
       <span class="icon">📥</span> Importar Base POS
     </button>
-    <button class="nav-item" onclick="goTo('acompanhar', this)">
+    <button class="nav-item" onclick="goTo(&#39;acompanhar&#39;, this)">
       <span class="icon">📡</span> Acompanhar Disparo
-    </button>
-    <button class="nav-item" onclick="goTo('atendimentos', this)">
-      <span class="icon">🎧</span> Atendimentos Bot
     </button>
   </nav>
   <div class="sidebar-footer">
@@ -400,11 +397,40 @@
   <div class="page-header-row">
     <div class="page-header">
       <h1>Dashboard</h1>
-      <p>Visão geral dos disparos POS</p>
+      <p>Visão geral dos disparos e atendimentos POS</p>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">🔄 Atualizar</button>
   </div>
 
+  <!-- Filtros globais -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px">
+      <div style="min-width:200px;flex:1">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Campanha</label>
+        <select id="dash-fil-campanha" onchange="applyDashFilters()" style="width:100%">
+          <option value="">Todas as campanhas</option>
+        </select>
+      </div>
+      <div style="min-width:200px;flex:1">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Plano</label>
+        <select id="dash-fil-plano" onchange="applyDashFilters()" style="width:100%">
+          <option value="">Todos os planos</option>
+        </select>
+      </div>
+      <div style="min-width:150px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Data início</label>
+        <input type="date" id="dash-fil-data-ini" onchange="applyDashFilters()" style="width:100%">
+      </div>
+      <div style="min-width:150px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Data fim</label>
+        <input type="date" id="dash-fil-data-fim" onchange="applyDashFilters()" style="width:100%">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="resetDashFiltros()">✕ Limpar</button>
+    </div>
+  </div>
+
+  <!-- ── SEÇÃO DISPARO ──────────────────────────────────────────── -->
+  <div class="section-title" style="font-weight:700;font-size:14px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">📤 Disparo</div>
   <div class="stats-grid">
     <div class="stat-card blue">
       <div class="stat-icon">👥</div>
@@ -428,10 +454,10 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="margin-bottom:28px">
     <div class="card-header">
       Últimas campanhas
-      <span class="badge badge-gray" id="badge-camps">0 campanhas</span>
+      <span class="badge badge-gray" id="badge-camps">— campanhas</span>
     </div>
     <div class="table-wrap">
       <table>
@@ -440,9 +466,121 @@
           <th>Status</th><th>Total</th><th>Enviados</th><th>Data</th>
         </tr></thead>
         <tbody id="dash-table-body">
-          <tr class="empty-row"><td colspan="7">Clique em Atualizar para carregar</td></tr>
+          <tr class="empty-row"><td colspan="7">Carregando...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ── SEÇÃO ATENDIMENTOS BOT ─────────────────────────────────── -->
+  <div class="section-title" style="font-weight:700;font-size:14px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">🤖 Atendimentos Bot</div>
+
+  <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px">
+    <div class="stat-card blue">
+      <div class="stat-icon">📋</div>
+      <div class="stat-num" id="at-total">—</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">🎉</div>
+      <div class="stat-num" id="at-venda">—</div>
+      <div class="stat-label">Vendas confirmadas</div>
+    </div>
+    <div class="stat-card blue" style="border-top-color:#F5A623">
+      <div class="stat-icon">💬</div>
+      <div class="stat-num" id="at-emand" style="color:#F5A623">—</div>
+      <div class="stat-label">Em atendimento</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-icon">🚪</div>
+      <div class="stat-num" id="at-abandono">—</div>
+      <div class="stat-label">Abandono</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon">👤</div>
+      <div class="stat-num" id="at-humano">—</div>
+      <div class="stat-label">Atend. humano</div>
+    </div>
+  </div>
+
+  <!-- Funil de etapas -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-header">Funil de etapas</div>
+    <div class="card-body" style="display:flex;gap:6px;align-items:stretch">
+      <div id="funil-pendente" class="funil-step" data-etapa="pendente">
+        <div class="funil-num" id="fn-pendente">—</div>
+        <div class="funil-label">⏳ Pendente</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-oferta" class="funil-step" data-etapa="oferta_enviada">
+        <div class="funil-num" id="fn-oferta">—</div>
+        <div class="funil-label">📨 Oferta enviada</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-cpf" class="funil-step" data-etapa="aguardando_cpf_completo">
+        <div class="funil-num" id="fn-cpf">—</div>
+        <div class="funil-label">🔐 Aguardando CPF</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-venda" class="funil-step funil-success" data-etapa="venda_confirmada">
+        <div class="funil-num" id="fn-venda">—</div>
+        <div class="funil-label">🎉 Venda confirmada</div>
+      </div>
+      <div class="funil-arrow">›</div>
+      <div id="funil-abandono" class="funil-step funil-danger" data-etapa="abandono">
+        <div class="funil-num" id="fn-abandono">—</div>
+        <div class="funil-label">🚪 Abandono</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters da tabela do bot -->
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+    <div style="flex:1;min-width:200px">
+      <input id="at-search" placeholder="🔍 Buscar por nome, telefone ou CPF..." oninput="filterAtendimentos()" style="width:100%">
+    </div>
+    <select id="at-filter-status" onchange="filterAtendimentos()" style="width:160px">
+      <option value="">Todos os status</option>
+      <option value="EM_ATENDIMENTO">Em atendimento</option>
+      <option value="VENDA_CONFIRMADA">Venda confirmada</option>
+      <option value="ABANDONO">Abandono</option>
+    </select>
+    <select id="at-filter-etapa" onchange="filterAtendimentos()" style="width:185px">
+      <option value="">Todas as etapas</option>
+      <option value="pendente">Pendente</option>
+      <option value="oferta_enviada">Oferta enviada</option>
+      <option value="aguardando_cpf_completo">Aguardando CPF</option>
+      <option value="venda_confirmada">Venda confirmada</option>
+      <option value="abandono">Abandono</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="resetAtFiltros()">✕ Limpar filtros</button>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>CPF</th>
+          <th>Plano</th>
+          <th>GB</th>
+          <th>Valor</th>
+          <th>Etapa</th>
+          <th>Status</th>
+          <th>Proposta</th>
+          <th>Tentativas</th>
+          <th>Atualizado</th>
+        </tr></thead>
+        <tbody id="at-table-body">
+          <tr class="empty-row"><td colspan="12">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between" id="at-footer">
+      <span id="at-count"></span>
+      <span id="at-last-update" style="color:var(--hint)"></span>
     </div>
   </div>
 </div>
@@ -599,7 +737,7 @@
           </div>
           <div></div>
         </div>
-        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-zone" onclick="document.getElementById(&#39;file-input&#39;).click()">
           <div class="upload-icon">📂</div>
           <div class="upload-title">Clique para selecionar o CSV</div>
           <div class="upload-sub">Separador vírgula (,) ou ponto-e-vírgula (;) · UTF-8</div>
@@ -688,7 +826,7 @@
         <p id="import-result-text" class="text-muted" style="margin-bottom:24px"></p>
         <div class="btn-group" style="justify-content:center">
           <button class="btn btn-ghost" onclick="resetImport()">Nova importação</button>
-          <button class="btn btn-primary" onclick="goTo('campanhas', document.querySelector('.nav-item:nth-child(2))'))">
+          <button class="btn btn-primary" onclick="goTo(&#39;campanhas&#39;, document.querySelector(&#39;.nav-item:nth-child(2))&#39;))">
             Ver campanhas →
           </button>
         </div>
@@ -766,10 +904,10 @@
   <!-- Filter tabs -->
   <div id="acomp-filters" style="display:none;margin-bottom:12px">
     <div style="display:flex;gap:6px">
-      <button class="btn btn-primary btn-sm" id="fil-todos" style="background:#00A896" onclick="setFilter('TODOS')">Todos</button>
-      <button class="btn btn-ghost btn-sm"   id="fil-env"     onclick="setFilter('ENVIADO')">Enviados</button>
-      <button class="btn btn-ghost btn-sm"   id="fil-pend"    onclick="setFilter('PENDENTE')">Pendentes</button>
-      <button class="btn btn-ghost btn-sm"   id="fil-erro"    onclick="setFilter('ERRO')">Erros</button>
+      <button class="btn btn-primary btn-sm" id="fil-todos" style="background:#00A896" onclick="setFilter(&#39;TODOS&#39;)">Todos</button>
+      <button class="btn btn-ghost btn-sm" id="fil-env" onclick="setFilter(&#39;ENVIADO&#39;)">Enviados</button>
+      <button class="btn btn-ghost btn-sm" id="fil-pend" onclick="setFilter(&#39;PENDENTE&#39;)">Pendentes</button>
+      <button class="btn btn-ghost btn-sm" id="fil-erro" onclick="setFilter(&#39;ERRO&#39;)">Erros</button>
     </div>
   </div>
 
@@ -789,136 +927,7 @@
 </div>
 
 
-<!-- ── ATENDIMENTOS ───────────────────────────────────────────────────────── -->
-<div id="page-atendimentos" class="page">
-  <div class="page-header-row">
-    <div class="page-header">
-      <h1>Atendimentos Bot</h1>
-      <p>Acompanhe em tempo real os atendimentos do fluxo POS</p>
-    </div>
-    <div class="btn-group">
-      <button class="btn btn-ghost btn-sm" onclick="loadAtendimentos()">🔄 Atualizar</button>
-      <div class="toggle-wrap">
-        <button class="toggle" id="toggle-at-auto" onclick="toggleAtAuto()"></button>
-        <span class="toggle-label">Auto (10s)</span>
-      </div>
-    </div>
-  </div>
 
-  <!-- Stats row -->
-  <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px">
-    <div class="stat-card blue">
-      <div class="stat-icon">📋</div>
-      <div class="stat-num" id="at-total">—</div>
-      <div class="stat-label">Total</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-icon">🎉</div>
-      <div class="stat-num" id="at-venda">—</div>
-      <div class="stat-label">Vendas confirmadas</div>
-    </div>
-    <div class="stat-card blue" style="border-top-color:#F5A623">
-      <div class="stat-icon">💬</div>
-      <div class="stat-num" id="at-emand" style="color:#F5A623">—</div>
-      <div class="stat-label">Em atendimento</div>
-    </div>
-    <div class="stat-card orange">
-      <div class="stat-icon">🚪</div>
-      <div class="stat-num" id="at-abandono">—</div>
-      <div class="stat-label">Abandono</div>
-    </div>
-    <div class="stat-card red">
-      <div class="stat-icon">👤</div>
-      <div class="stat-num" id="at-humano">—</div>
-      <div class="stat-label">Atend. humano</div>
-    </div>
-  </div>
-
-  <!-- Funil de etapas -->
-  <div class="card" style="margin-bottom:18px">
-    <div class="card-header">Funil de etapas</div>
-    <div class="card-body" style="display:flex;gap:6px;align-items:stretch">
-      <div id="funil-inicio"    class="funil-step" data-etapa="inicio">
-        <div class="funil-num" id="fn-inicio">—</div>
-        <div class="funil-label">🚀 Início</div>
-      </div>
-      <div class="funil-arrow">›</div>
-      <div id="funil-oferta"    class="funil-step" data-etapa="oferta_enviada">
-        <div class="funil-num" id="fn-oferta">—</div>
-        <div class="funil-label">📨 Oferta enviada</div>
-      </div>
-      <div class="funil-arrow">›</div>
-      <div id="funil-cpf"       class="funil-step" data-etapa="aguardando_cpf_completo">
-        <div class="funil-num" id="fn-cpf">—</div>
-        <div class="funil-label">🔐 Aguardando CPF</div>
-      </div>
-      <div class="funil-arrow">›</div>
-      <div id="funil-venda"     class="funil-step funil-success" data-etapa="venda_confirmada">
-        <div class="funil-num" id="fn-venda">—</div>
-        <div class="funil-label">🎉 Venda confirmada</div>
-      </div>
-      <div class="funil-arrow">›</div>
-      <div id="funil-errada"    class="funil-step funil-danger" data-etapa="validacao_errada">
-        <div class="funil-num" id="fn-errada">—</div>
-        <div class="funil-label">❌ Validação errada</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-    <div style="flex:1;min-width:200px">
-      <input id="at-search" placeholder="🔍 Buscar por nome, telefone ou CPF..."
-        oninput="filterAtendimentos()" style="width:100%">
-    </div>
-    <select id="at-filter-status" onchange="filterAtendimentos()" style="width:160px">
-      <option value="">Todos os status</option>
-      <option value="em atendimento">Em atendimento</option>
-      <option value="finalizada">Finalizada</option>
-      <option value="abandono">Abandono</option>
-    </select>
-    <select id="at-filter-etapa" onchange="filterAtendimentos()" style="width:185px">
-      <option value="">Todas as etapas</option>
-      <option value="inicio">Início</option>
-      <option value="oferta_enviada">Oferta enviada</option>
-      <option value="aguardando_cpf_completo">Aguardando CPF</option>
-      <option value="venda_confirmada">Venda confirmada</option>
-      <option value="validacao_errada">Validação errada</option>
-    </select>
-    <button class="btn btn-ghost btn-sm" onclick="resetAtFiltros()">✕ Limpar filtros</button>
-  </div>
-
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>ID</th>
-          <th>Nome</th>
-          <th>Telefone</th>
-          <th>CPF</th>
-          <th>Plano</th>
-          <th>GB</th>
-          <th>Valor</th>
-          <th>Etapa</th>
-          <th>Status</th>
-          <th>Proposta</th>
-          <th>Tentativas</th>
-          <th>Atualizado</th>
-        </tr></thead>
-        <tbody id="at-table-body">
-          <tr class="empty-row"><td colspan="12">Clique em Atualizar para carregar</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between" id="at-footer">
-      <span id="at-count"></span>
-      <span id="at-last-update" style="color:var(--hint)"></span>
-    </div>
-  </div>
-</div>
-
-</main>
-</div>
 
 <!-- MODAL CONTATOS -->
 <div class="modal-bg" id="modal-cont">
@@ -1012,31 +1021,95 @@ function fmtDate(d) {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
+// ── DASHBOARD UNIFICADO (Disparo + Bot) ────────────────────────────────────────
+let dashContatosAll = [];
+let dashCampanhasAll = [];
+
 async function loadDashboard() {
   try {
-    const [stats, camps] = await Promise.all([
-      sb('/contatos?select=status'),
-      sb('/campanhas?select=*&order=id.desc&limit=10'),
+    const [contatos, camps] = await Promise.all([
+      sb('/contatos?select=*&order=id.desc&limit=5000'),
+      sb('/campanhas?select=*&order=id.desc&limit=20'),
     ]);
-    document.getElementById('stat-total').textContent     = stats.length.toLocaleString();
-    document.getElementById('stat-enviados').textContent  = stats.filter(c=>c.status==='ENVIADO').length.toLocaleString();
-    document.getElementById('stat-pendentes').textContent = stats.filter(c=>c.status==='PENDENTE').length.toLocaleString();
-    document.getElementById('stat-erros').textContent     = stats.filter(c=>c.status==='ERRO').length.toLocaleString();
-    document.getElementById('badge-camps').textContent    = `${camps.length} campanhas`;
+    dashContatosAll  = contatos;
+    dashCampanhasAll = camps;
 
-    const tbody = document.getElementById('dash-table-body');
-    if (!camps.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nenhuma campanha encontrada</td></tr>'; return; }
-    tbody.innerHTML = camps.map(c => `
+    populateDashFilterOptions();
+    applyDashFilters();
+  } catch(e) { toast('Erro ao carregar dashboard: ' + e.message, 'error'); }
+}
+
+function populateDashFilterOptions() {
+  const selCamp = document.getElementById('dash-fil-campanha');
+  const curCamp = selCamp.value;
+  const campOptions = dashCampanhasAll.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  selCamp.innerHTML = '<option value="">Todas as campanhas</option>' + campOptions;
+  selCamp.value = curCamp;
+
+  const selPlano = document.getElementById('dash-fil-plano');
+  const curPlano = selPlano.value;
+  const planos = [...new Set(dashContatosAll.map(c => c.plano_nome).filter(Boolean))].sort();
+  selPlano.innerHTML = '<option value="">Todos os planos</option>' + planos.map(p => `<option value="${p}">${p}</option>`).join('');
+  selPlano.value = curPlano;
+}
+
+function getDashFilteredContatos() {
+  const campanha = document.getElementById('dash-fil-campanha').value;
+  const plano    = document.getElementById('dash-fil-plano').value;
+  const dataIni  = document.getElementById('dash-fil-data-ini').value;
+  const dataFim  = document.getElementById('dash-fil-data-fim').value;
+
+  return dashContatosAll.filter(c => {
+    if (campanha && String(c.campanha_id) !== String(campanha)) return false;
+    if (plano && c.plano_nome !== plano) return false;
+    const ref = c.created_at || c.enviado_em;
+    if (dataIni && ref && ref.substring(0,10) < dataIni) return false;
+    if (dataFim && ref && ref.substring(0,10) > dataFim) return false;
+    return true;
+  });
+}
+
+function applyDashFilters() {
+  const filtered = getDashFilteredContatos();
+  renderDashDisparo(filtered);
+  renderDashBot(filtered);
+}
+
+function resetDashFiltros() {
+  document.getElementById('dash-fil-campanha').value = '';
+  document.getElementById('dash-fil-plano').value = '';
+  document.getElementById('dash-fil-data-ini').value = '';
+  document.getElementById('dash-fil-data-fim').value = '';
+  applyDashFilters();
+}
+
+function renderDashDisparo(contatos) {
+  document.getElementById('stat-total').textContent     = contatos.length.toLocaleString();
+  document.getElementById('stat-enviados').textContent  = contatos.filter(c=>c.status==='ENVIADO').length.toLocaleString();
+  document.getElementById('stat-pendentes').textContent = contatos.filter(c=>c.status==='PENDENTE').length.toLocaleString();
+  document.getElementById('stat-erros').textContent     = contatos.filter(c=>c.status==='ERRO').length.toLocaleString();
+
+  const campIdsVisiveis = new Set(contatos.map(c => c.campanha_id));
+  const campsFiltradas = dashCampanhasAll.filter(c => campIdsVisiveis.has(c.id));
+  document.getElementById('badge-camps').textContent = `${campsFiltradas.length} campanhas`;
+
+  const tbody = document.getElementById('dash-table-body');
+  if (!campsFiltradas.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nenhuma campanha encontrada</td></tr>'; return; }
+  tbody.innerHTML = campsFiltradas.map(c => {
+    const contatosCamp = contatos.filter(ct => ct.campanha_id === c.id);
+    const enviados = contatosCamp.filter(ct => ct.status === 'ENVIADO').length;
+    const total = contatosCamp.length;
+    return `
       <tr>
         <td style="font-weight:600">${c.nome}</td>
         <td><code>${c.template||'—'}</code></td>
         <td>${c.tipo_hsm==='variavel'?'📌 Variável':'📄 Fixa'}</td>
         <td>${badge(c.status)}</td>
-        <td>${c.total_contatos||0}</td>
-        <td><b style="color:var(--green)">${c.enviados||0}</b>${c.total_contatos?` <span class="td-muted">(${Math.round(((c.enviados||0)/c.total_contatos)*100)}%)</span>`:''}</td>
+        <td>${total}</td>
+        <td><b style="color:var(--green)">${enviados}</b>${total?` <span class="td-muted">(${Math.round((enviados/total)*100)}%)</span>`:''}</td>
         <td class="td-muted">${fmtDate(c.data)}</td>
-      </tr>`).join('');
-  } catch(e) { toast('Erro ao carregar dashboard: ' + e.message, 'error'); }
+      </tr>`;
+  }).join('');
 }
 
 // ── CAMPANHAS ─────────────────────────────────────────────────────────────────
@@ -1436,23 +1509,21 @@ function toggleAuto() {
 
 
 // ── ATENDIMENTOS ──────────────────────────────────────────────────────────────
-let atendimentosAll = [];
+let dashBotFiltered = [];
 
-async function loadAtendimentos() {
-  try {
-    atendimentosAll = await sb('/atendimentos?select=*&order=id.desc&limit=500');
-    updateAtStats();
-    updateFunil();
-    filterAtendimentos();
-  } catch(e) { toast('Erro ao carregar atendimentos: ' + e.message, 'error'); }
+function renderDashBot(contatos) {
+  dashBotFiltered = contatos;
+  updateAtStats(contatos);
+  updateFunil(contatos);
+  filterAtendimentos();
 }
 
-function updateAtStats() {
-  const total   = atendimentosAll.length;
-  const venda   = atendimentosAll.filter(a => a.etapa === 'venda_confirmada').length;
-  const emand   = atendimentosAll.filter(a => a.status === 'em atendimento').length;
-  const aband   = atendimentosAll.filter(a => a.status === 'abandono').length;
-  const humano  = atendimentosAll.filter(a => a.etapa === 'validacao_errada').length;
+function updateAtStats(contatos) {
+  const total   = contatos.length;
+  const venda   = contatos.filter(a => a.etapa === 'venda_confirmada').length;
+  const emand   = contatos.filter(a => a.status === 'EM_ATENDIMENTO').length;
+  const aband   = contatos.filter(a => a.status === 'ABANDONO').length;
+  const humano  = contatos.filter(a => a.status === 'ABANDONO').length;
   document.getElementById('at-total').textContent   = total.toLocaleString();
   document.getElementById('at-venda').textContent   = venda.toLocaleString();
   document.getElementById('at-emand').textContent   = emand.toLocaleString();
@@ -1465,10 +1536,11 @@ function filterAtendimentos() {
   const status = document.getElementById('at-filter-status').value;
   const etapa  = document.getElementById('at-filter-etapa').value;
 
-  const filtered = atendimentosAll.filter(a => {
+  const filtered = dashBotFiltered.filter(a => {
     const matchSearch = !search ||
       (a.nome||'').toLowerCase().includes(search) ||
-      (a.telefone||'').includes(search);
+      (a.telefone||'').includes(search) ||
+      (a.cpf||'').includes(search);
     const matchStatus = !status || a.status === status;
     const matchEtapa  = !etapa  || a.etapa  === etapa;
     return matchSearch && matchStatus && matchEtapa;
@@ -1476,37 +1548,39 @@ function filterAtendimentos() {
 
   renderAtendimentos(filtered);
   document.getElementById('at-count').textContent =
-    `${filtered.length} de ${atendimentosAll.length} atendimentos`;
+    `${filtered.length} de ${dashBotFiltered.length} contatos`;
+  document.getElementById('at-last-update').textContent =
+    'Atualizado em ' + new Date().toLocaleTimeString('pt-BR');
 }
 
 const ETAPA_LABEL = {
-  'inicio':                  '🚀 Início',
+  'pendente':                '⏳ Pendente',
   'oferta_enviada':          '📨 Oferta enviada',
   'aguardando_cpf_completo': '🔐 Aguard. CPF',
   'venda_confirmada':        '🎉 Venda confirmada',
-  'validacao_errada':        '❌ Validação errada',
+  'abandono':                '🚪 Abandono',
 };
 const ETAPA_COLOR = {
-  'inicio':                  '#64748B',
+  'pendente':                '#64748B',
   'oferta_enviada':          '#F5A623',
   'aguardando_cpf_completo': '#7C3AED',
   'venda_confirmada':        '#16A34A',
-  'validacao_errada':        '#DC2626',
+  'abandono':                '#DC2626',
 };
 const STATUS_BADGE = {
-  'em atendimento': 'badge-orange',
-  'finalizada':     'badge-green',
-  'abandono':       'badge-red',
+  'EM_ATENDIMENTO':   'badge-orange',
+  'VENDA_CONFIRMADA': 'badge-green',
+  'ABANDONO':         'badge-red',
 };
 
-function updateFunil() {
+function updateFunil(contatos) {
   const map = {
-    'inicio':'fn-inicio','oferta_enviada':'fn-oferta',
-    'aguardando_cpf_completo':'fn-cpf','venda_confirmada':'fn-venda','validacao_errada':'fn-errada'
+    'pendente':'fn-pendente','oferta_enviada':'fn-oferta',
+    'aguardando_cpf_completo':'fn-cpf','venda_confirmada':'fn-venda','abandono':'fn-abandono'
   };
   Object.entries(map).forEach(([etapa, id]) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = atendimentosAll.filter(a=>a.etapa===etapa).length.toLocaleString();
+    if (el) el.textContent = contatos.filter(a=>a.etapa===etapa).length.toLocaleString();
   });
   document.querySelectorAll('.funil-step').forEach(el => {
     el.onclick = () => {
@@ -1531,7 +1605,7 @@ function resetAtFiltros() {
 function renderAtendimentos(data) {
   const tbody = document.getElementById('at-table-body');
   if (!data.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Nenhum atendimento encontrado</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Nenhum contato encontrado</td></tr>';
     return;
   }
   tbody.innerHTML = data.map(a => {
@@ -1544,7 +1618,7 @@ function renderAtendimentos(data) {
       '<td class="td-mono" style="font-size:12px">' + (a.telefone||'\u2014') + '</td>' +
       '<td style="font-size:11px;color:var(--muted)">' + (cpfFmt||'\u2014') + '</td>' +
       '<td><div style="font-size:12px;font-weight:600">' + (a.plano_nome||'\u2014') + '</div>' +
-        '<div style="font-size:10px;color:var(--hint)">' + (a.plano_id_isize||'') + '</div></td>' +
+        '<div style="font-size:10px;color:var(--hint)">' + (a.plan_id_isize||'') + '</div></td>' +
       '<td style="text-align:center;font-weight:700;color:#00A896">' + (a.gigas ? a.gigas+'GB' : '\u2014') + '</td>' +
       '<td style="font-weight:600">' + valorFmt + '</td>' +
       '<td><span style="font-size:11px;font-weight:600;color:' + (ETAPA_COLOR[a.etapa]||'#64748B') + '">' +
@@ -1552,7 +1626,7 @@ function renderAtendimentos(data) {
       '<td><span class="badge ' + (STATUS_BADGE[a.status]||'badge-gray') + '">' + (a.status||'\u2014') + '</span></td>' +
       '<td style="font-size:12px;font-weight:700;color:#00A896">' + (a.proposta||'\u2014') + '</td>' +
       '<td style="text-align:center;font-size:12px">' + tent + '</td>' +
-      '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + fmtDate(a.updated_at||a.created_at) + '</td>' +
+      '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + fmtDate(a.enviado_em||a.created_at) + '</td>' +
     '</tr>';
   }).join('');
 }
@@ -1560,5 +1634,7 @@ function renderAtendimentos(data) {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 loadDashboard();
 </script>
-</body>
-</html>
+
+
+
+</body></html>
