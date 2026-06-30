@@ -680,6 +680,19 @@
           <input id="inp-tpl-imagem" placeholder="https://raw.githubusercontent.com/atndigital/assets/main/...">
           <div style="font-size:11px;color:var(--hint);margin-top:4px">Necessário apenas se o template tiver header de imagem aprovado na Meta.</div>
         </div>
+        <div class="form-group" id="grp-tpl-params" style="display:none">
+          <label>Ordem dos parâmetros do corpo ({{1}}, {{2}}...)</label>
+          <div id="params-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;min-height:32px;padding:6px;border:1px dashed var(--border);border-radius:6px"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addParam('nome')">+ nome</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addParam('plano_nome')">+ plano_nome</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addParam('gigas')">+ gigas</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addParam('valor')">+ valor</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addParam('cpf')">+ cpf</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="clearParams()">✕ Limpar</button>
+          </div>
+          <div style="font-size:11px;color:var(--hint);margin-top:4px">Clique na ordem exata em que os parâmetros aparecem no template aprovado na Meta.</div>
+        </div>
         <div class="form-group">
           <label>Texto de preview (opcional)</label>
           <textarea id="inp-tpl-preview" placeholder="Cole o texto do template..."></textarea>
@@ -691,9 +704,9 @@
         <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Templates cadastrados</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Meta</th><th>Tipo</th><th>Imagem</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Meta</th><th>Tipo</th><th>Imagem</th><th>Parâmetros</th></tr></thead>
             <tbody id="tpl-table-body">
-              <tr class="empty-row"><td colspan="3">Nenhum template</td></tr>
+              <tr class="empty-row"><td colspan="5">Nenhum template</td></tr>
             </tbody>
           </table>
         </div>
@@ -1197,23 +1210,54 @@ async function verContatos(id, nome) {
 function closeModal() { document.getElementById('modal-cont').classList.remove('open'); }
 
 // ── TEMPLATES ────────────────────────────────────────────────────────────────
+let paramsAtuais = [];
+
 async function loadTemplates() {
   try {
     templates = await sb('/templates_hsm?select=*&order=nome.asc');
     const sel = document.getElementById('sel-hsm');
     sel.innerHTML = '<option value="">Selecione...</option>' +
-      templates.map(t => `<option value='${JSON.stringify({nome_meta:t.nome_meta,tipo_hsm:t.tipo_hsm,nome:t.nome,imagem_url:t.imagem_url||''})}'>${t.nome} (${t.tipo_hsm})</option>`).join('');
+      templates.map(t => `<option value='${JSON.stringify({nome_meta:t.nome_meta,tipo_hsm:t.tipo_hsm,nome:t.nome,imagem_url:t.imagem_url||'',parametros_ordem:t.parametros_ordem||''})}'>${t.nome} (${t.tipo_hsm})</option>`).join('');
 
     document.getElementById('tpl-table-body').innerHTML = templates.length
       ? templates.map(t => `<tr><td>${t.nome}</td><td><code>${t.nome_meta}</code></td><td>${t.tipo_hsm}</td>
-          <td>${t.imagem_url ? `<a href="${t.imagem_url}" target="_blank" style="color:var(--blue)">🖼️ Ver</a>` : '<span class="td-muted">—</span>'}</td></tr>`).join('')
-      : '<tr class="empty-row"><td colspan="4">Nenhum template</td></tr>';
+          <td>${t.imagem_url ? `<a href="${t.imagem_url}" target="_blank" style="color:var(--blue)">🖼️ Ver</a>` : '<span class="td-muted">—</span>'}</td>
+          <td style="font-size:11px">${t.parametros_ordem ? `<code>{{${t.parametros_ordem.split(',').join('}} {{')}}}</code>` : '<span class="td-muted">—</span>'}</td></tr>`).join('')
+      : '<tr class="empty-row"><td colspan="5">Nenhum template</td></tr>';
   } catch(e) { toast('Erro ao carregar templates: ' + e.message, 'error'); }
 }
 
 function onTplTipoChange() {
   const tipo = document.getElementById('sel-tpl-tipo').value;
   document.getElementById('grp-tpl-imagem').style.display = tipo === 'variavel' ? 'block' : 'none';
+  document.getElementById('grp-tpl-params').style.display = tipo === 'variavel' ? 'block' : 'none';
+  if (tipo !== 'variavel') clearParams();
+}
+
+function addParam(campo) {
+  paramsAtuais.push(campo);
+  renderParamsChips();
+}
+
+function removeParam(idx) {
+  paramsAtuais.splice(idx, 1);
+  renderParamsChips();
+}
+
+function clearParams() {
+  paramsAtuais = [];
+  renderParamsChips();
+}
+
+function renderParamsChips() {
+  const box = document.getElementById('params-chips');
+  if (!paramsAtuais.length) {
+    box.innerHTML = '<span style="font-size:11px;color:var(--hint)">Nenhum parâmetro adicionado</span>';
+    return;
+  }
+  box.innerHTML = paramsAtuais.map((p, i) =>
+    `<span class="badge badge-blue" style="cursor:pointer" onclick="removeParam(${i})">{{${i+1}}} ${p} ✕</span>`
+  ).join('');
 }
 
 function onHSMChange() {
@@ -1225,8 +1269,11 @@ function onHSMChange() {
   const temImagem = tpl.tipo_hsm === 'variavel' && tpl.imagem_url;
   const avisoImagem = tpl.tipo_hsm === 'variavel' && !tpl.imagem_url
     ? '<br><span style="color:var(--orange)">⚠️ Sem imagem cadastrada — envio sairá sem header de imagem</span>' : '';
+  const paramsTexto = tpl.tipo_hsm === 'variavel' && tpl.parametros_ordem
+    ? tpl.parametros_ordem.split(',').join(', ')
+    : (tpl.tipo_hsm === 'variavel' ? 'nome, plano_nome, gigas, valor (padrão)' : '');
   document.getElementById('hsm-info-text').innerHTML =
-    `<strong>${tpl.nome_meta}</strong> · ${tpl.tipo_hsm === 'variavel' ? '📌 Variável — envia nome, plano, gigas e valor' : '📄 Fixa — sem variáveis'}
+    `<strong>${tpl.nome_meta}</strong> · ${tpl.tipo_hsm === 'variavel' ? `📌 Variável — ${paramsTexto}` : '📄 Fixa — sem variáveis'}
     ${temImagem ? '<br><span style="color:var(--green)">🖼️ Imagem de header cadastrada</span>' : avisoImagem}`;
 }
 
@@ -1236,11 +1283,13 @@ async function salvarTemplate() {
   const tipo     = document.getElementById('sel-tpl-tipo').value;
   const preview  = document.getElementById('inp-tpl-preview').value.trim();
   const imagem   = document.getElementById('inp-tpl-imagem').value.trim();
+  const params   = tipo === 'variavel' && paramsAtuais.length ? paramsAtuais.join(',') : null;
   if (!meta) { toast('Nome Meta obrigatório', 'warning'); return; }
   try {
     await sb('/templates_hsm', { method:'POST', body: JSON.stringify({
       nome: nome||meta, nome_meta:meta, tipo_hsm:tipo, texto_preview:preview,
-      imagem_url: tipo === 'variavel' && imagem ? imagem : null
+      imagem_url: tipo === 'variavel' && imagem ? imagem : null,
+      parametros_ordem: params
     })});
     toast('Template salvo!', 'success');
     document.getElementById('inp-tpl-nome').value = '';
@@ -1249,6 +1298,8 @@ async function salvarTemplate() {
     document.getElementById('inp-tpl-imagem').value = '';
     document.getElementById('sel-tpl-tipo').value = 'fixa';
     document.getElementById('grp-tpl-imagem').style.display = 'none';
+    document.getElementById('grp-tpl-params').style.display = 'none';
+    clearParams();
     loadTemplates();
   } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
