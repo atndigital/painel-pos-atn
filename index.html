@@ -659,7 +659,6 @@
         <div class="info-box yellow">
           <span class="info-icon">⚠️</span>
           Templates precisam estar aprovados na Meta. Use o nome exato do WhatsApp Business Manager.
-          Templates POS devem começar com <strong>pos_</strong> para usar o novo número.
         </div>
         <div class="form-group">
           <label>Nome de exibição</label>
@@ -671,10 +670,15 @@
         </div>
         <div class="form-group">
           <label>Tipo de HSM <span class="req">*</span></label>
-          <select id="sel-tpl-tipo">
+          <select id="sel-tpl-tipo" onchange="onTplTipoChange()">
             <option value="fixa">Fixa — sem variáveis</option>
-            <option value="variavel">Variável — nome, telefone, valor, vencimento</option>
+            <option value="variavel">Variável — nome, plano, gigas, valor</option>
           </select>
+        </div>
+        <div class="form-group" id="grp-tpl-imagem" style="display:none">
+          <label>URL da imagem do header</label>
+          <input id="inp-tpl-imagem" placeholder="https://raw.githubusercontent.com/atndigital/assets/main/...">
+          <div style="font-size:11px;color:var(--hint);margin-top:4px">Necessário apenas se o template tiver header de imagem aprovado na Meta.</div>
         </div>
         <div class="form-group">
           <label>Texto de preview (opcional)</label>
@@ -687,7 +691,7 @@
         <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Templates cadastrados</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Meta</th><th>Tipo</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Meta</th><th>Tipo</th><th>Imagem</th></tr></thead>
             <tbody id="tpl-table-body">
               <tr class="empty-row"><td colspan="3">Nenhum template</td></tr>
             </tbody>
@@ -1197,12 +1201,18 @@ async function loadTemplates() {
     templates = await sb('/templates_hsm?select=*&order=nome.asc');
     const sel = document.getElementById('sel-hsm');
     sel.innerHTML = '<option value="">Selecione...</option>' +
-      templates.map(t => `<option value='${JSON.stringify({nome_meta:t.nome_meta,tipo_hsm:t.tipo_hsm,nome:t.nome})}'>${t.nome} (${t.tipo_hsm})</option>`).join('');
+      templates.map(t => `<option value='${JSON.stringify({nome_meta:t.nome_meta,tipo_hsm:t.tipo_hsm,nome:t.nome,imagem_url:t.imagem_url||''})}'>${t.nome} (${t.tipo_hsm})</option>`).join('');
 
     document.getElementById('tpl-table-body').innerHTML = templates.length
-      ? templates.map(t => `<tr><td>${t.nome}</td><td><code>${t.nome_meta}</code></td><td>${t.tipo_hsm}</td></tr>`).join('')
-      : '<tr class="empty-row"><td colspan="3">Nenhum template</td></tr>';
+      ? templates.map(t => `<tr><td>${t.nome}</td><td><code>${t.nome_meta}</code></td><td>${t.tipo_hsm}</td>
+          <td>${t.imagem_url ? `<a href="${t.imagem_url}" target="_blank" style="color:var(--blue)">🖼️ Ver</a>` : '<span class="td-muted">—</span>'}</td></tr>`).join('')
+      : '<tr class="empty-row"><td colspan="4">Nenhum template</td></tr>';
   } catch(e) { toast('Erro ao carregar templates: ' + e.message, 'error'); }
+}
+
+function onTplTipoChange() {
+  const tipo = document.getElementById('sel-tpl-tipo').value;
+  document.getElementById('grp-tpl-imagem').style.display = tipo === 'variavel' ? 'block' : 'none';
 }
 
 function onHSMChange() {
@@ -1211,26 +1221,33 @@ function onHSMChange() {
   if (!val) { box.style.display='none'; return; }
   const tpl = JSON.parse(val);
   box.style.display = 'flex';
-  const isPos = tpl.nome_meta.startsWith('pos_');
+  const temImagem = tpl.tipo_hsm === 'variavel' && tpl.imagem_url;
+  const avisoImagem = tpl.tipo_hsm === 'variavel' && !tpl.imagem_url
+    ? '<br><span style="color:var(--orange)">⚠️ Sem imagem cadastrada — envio sairá sem header de imagem</span>' : '';
   document.getElementById('hsm-info-text').innerHTML =
-    `<strong>${tpl.nome_meta}</strong> · ${tpl.tipo_hsm === 'variavel' ? '📌 Variável — envia nome, telefone, valor e vencimento' : '📄 Fixa — sem variáveis'}<br>
-    <span style="color:${isPos?'var(--teal)':'var(--orange)'}">
-      ${isPos ? '✅ Novo número (+55 11 98216-9458)' : '⚠️ Número anterior — template não começa com pos_'}
-    </span>`;
+    `<strong>${tpl.nome_meta}</strong> · ${tpl.tipo_hsm === 'variavel' ? '📌 Variável — envia nome, plano, gigas e valor' : '📄 Fixa — sem variáveis'}
+    ${temImagem ? '<br><span style="color:var(--green)">🖼️ Imagem de header cadastrada</span>' : avisoImagem}`;
 }
 
 async function salvarTemplate() {
-  const nome    = document.getElementById('inp-tpl-nome').value.trim();
-  const meta    = document.getElementById('inp-tpl-meta').value.trim();
-  const tipo    = document.getElementById('sel-tpl-tipo').value;
-  const preview = document.getElementById('inp-tpl-preview').value.trim();
+  const nome     = document.getElementById('inp-tpl-nome').value.trim();
+  const meta     = document.getElementById('inp-tpl-meta').value.trim();
+  const tipo     = document.getElementById('sel-tpl-tipo').value;
+  const preview  = document.getElementById('inp-tpl-preview').value.trim();
+  const imagem   = document.getElementById('inp-tpl-imagem').value.trim();
   if (!meta) { toast('Nome Meta obrigatório', 'warning'); return; }
   try {
-    await sb('/templates_hsm', { method:'POST', body: JSON.stringify({ nome: nome||meta, nome_meta:meta, tipo_hsm:tipo, texto_preview:preview }) });
+    await sb('/templates_hsm', { method:'POST', body: JSON.stringify({
+      nome: nome||meta, nome_meta:meta, tipo_hsm:tipo, texto_preview:preview,
+      imagem_url: tipo === 'variavel' && imagem ? imagem : null
+    })});
     toast('Template salvo!', 'success');
     document.getElementById('inp-tpl-nome').value = '';
     document.getElementById('inp-tpl-meta').value = '';
     document.getElementById('inp-tpl-preview').value = '';
+    document.getElementById('inp-tpl-imagem').value = '';
+    document.getElementById('sel-tpl-tipo').value = 'fixa';
+    document.getElementById('grp-tpl-imagem').style.display = 'none';
     loadTemplates();
   } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
